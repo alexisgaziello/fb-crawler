@@ -1,0 +1,32 @@
+# Dependencies and package-manager caches
+node_modules/
+.pnpm-store/
+.yarn/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Scraper runtime state
+.data/
+
+# Build and tool output
+dist/
+coverage/
+.turbo/
+.vite/
+.vitest/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/
