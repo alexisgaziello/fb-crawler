@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import nodemailer from "nodemailer";
-import type { ClassifiedPost } from "./classifier.js";
+import type { ClassifiedPost } from "./classifier/index.js";
 import { config } from "./config.js";
 import { logger } from "./logger.js";
 
@@ -13,49 +13,49 @@ export type ScraperAlert = {
   details?: string;
 };
 
+type NotificationMessage = {
+  title: string;
+  text: string;
+  html: string;
+  desktopMessage: string;
+};
+
 export async function notify(matches: ClassifiedPost[]) {
   if (matches.length === 0) return;
 
   logger.info({ matchCount: matches.length }, "Relevant posts found.");
-  logger.info(formatPlainText(matches));
+  const text = formatPlainText(matches);
+  logger.info(text);
 
-  await Promise.all([sendEmail(matches), sendDesktopNotification(matches)]);
+  await deliverNotification({
+    title: `Skydiving gear alert: ${matches.length} relevant post${matches.length === 1 ? "" : "s"}`,
+    text,
+    html: formatHtml(matches),
+    desktopMessage: `${matches.length} relevant Facebook post${matches.length === 1 ? "" : "s"} found.`,
+  });
 }
 
 export async function notifyAlert(alert: ScraperAlert) {
   const text = formatAlertText(alert);
   logger.error(text);
 
-  const sent = await Promise.all([sendAlertEmail(alert), sendAlertDesktopNotification(alert)]);
-  if (!sent.some(Boolean)) {
+  const sent = await deliverNotification({
+    title: alert.title,
+    text,
+    html: `<html><body><pre>${escapeHtml(text)}</pre></body></html>`,
+    desktopMessage: alert.message,
+  });
+  if (!sent) {
     logger.warn("No alert notification channel configured; alert was logged only.");
   }
 }
 
-async function sendEmail(matches: ClassifiedPost[]) {
-  if (!config.SMTP_HOST || !config.EMAIL_TO) return;
-
-  const transporter = nodemailer.createTransport({
-    host: config.SMTP_HOST,
-    port: config.SMTP_PORT,
-    secure: config.SMTP_SECURE,
-    auth:
-      config.SMTP_USER && config.SMTP_PASS
-        ? { user: config.SMTP_USER, pass: config.SMTP_PASS }
-        : undefined,
-  });
-
-  const from = config.EMAIL_FROM || config.SMTP_USER || "fb-crawler@localhost";
-  await transporter.sendMail({
-    from,
-    to: config.EMAIL_TO,
-    subject: `Skydiving gear alert: ${matches.length} relevant post${matches.length === 1 ? "" : "s"}`,
-    text: formatPlainText(matches),
-    html: formatHtml(matches),
-  });
+async function deliverNotification(message: NotificationMessage) {
+  const sent = await Promise.all([sendEmail(message), sendDesktopNotification(message)]);
+  return sent.some(Boolean);
 }
 
-async function sendAlertEmail(alert: ScraperAlert) {
+async function sendEmail(message: NotificationMessage) {
   if (!config.SMTP_HOST || !config.EMAIL_TO) return false;
 
   const transporter = nodemailer.createTransport({
@@ -72,36 +72,26 @@ async function sendAlertEmail(alert: ScraperAlert) {
   await transporter.sendMail({
     from,
     to: config.EMAIL_TO,
-    subject: alert.title,
-    text: formatAlertText(alert),
-    html: `<html><body><pre>${escapeHtml(formatAlertText(alert))}</pre></body></html>`,
+    subject: message.title,
+    text: message.text,
+    html: message.html,
   });
   return true;
 }
 
-async function sendDesktopNotification(matches: ClassifiedPost[]) {
-  if (!config.NOTIFY_DESKTOP || process.platform !== "darwin") return;
-
-  const title = "Skydiving gear alert";
-  const message = `${matches.length} relevant Facebook post${matches.length === 1 ? "" : "s"} found.`;
-  await execFileAsync("osascript", [
-    "-e",
-    `display notification ${JSON.stringify(message)} with title ${JSON.stringify(title)}`,
-  ]).catch((error) => {
-    logger.warn({ err: error }, "Desktop notification failed.");
-  });
-}
-
-async function sendAlertDesktopNotification(alert: ScraperAlert) {
+async function sendDesktopNotification(message: NotificationMessage) {
   if (!config.NOTIFY_DESKTOP || process.platform !== "darwin") return false;
 
-  await execFileAsync("osascript", [
-    "-e",
-    `display notification ${JSON.stringify(alert.message)} with title ${JSON.stringify(alert.title)}`,
-  ]).catch((error) => {
-    logger.warn({ err: error }, "Desktop alert notification failed.");
-  });
-  return true;
+  try {
+    await execFileAsync("osascript", [
+      "-e",
+      `display notification ${JSON.stringify(message.desktopMessage)} with title ${JSON.stringify(message.title)}`,
+    ]);
+    return true;
+  } catch (error) {
+    logger.warn({ err: error }, "Desktop notification failed.");
+    return false;
+  }
 }
 
 function formatPlainText(matches: ClassifiedPost[]) {

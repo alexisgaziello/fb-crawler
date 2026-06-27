@@ -1,0 +1,5 @@
+Post URL: {{POST_URL}}
+Author: {{POST_AUTHOR}}
+Timestamp: {{POST_TIMESTAMP}}
+Raw post text:
+{{POST_TEXT}}

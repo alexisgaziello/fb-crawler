@@ -11,8 +11,11 @@ scripts:
   format: biome check --write .
   lint: biome check .
   scrape: tsx src/index.ts scrape
+  scrape:daily: tsx src/index.ts scrape --daily
   scrape:debug: tsx src/index.ts scrape --debug
+  scrape:debug:steps: tsx src/index.ts scrape --debug --steps
   scrape:headed: tsx src/index.ts scrape --headed
+  snapshot:debug: tsx src/index.ts snapshot
   test: vitest run
   typecheck: tsc --noEmit
 dependencies:

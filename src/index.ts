@@ -1,15 +1,23 @@
-import type { ClassifiedPost } from "./classifier.js";
-import { classifyPost } from "./classifier.js";
+import type { ClassifiedPost } from "./classifier/index.js";
+import { classifyPost } from "./classifier/index.js";
 import { config } from "./config.js";
-import { FacebookAccessError, saveFacebookSession, scrapeRecentPosts } from "./facebook.js";
+import {
+  FacebookAccessError,
+  saveFacebookPageSnapshot,
+  saveFacebookSession,
+  scrapeRecentPosts,
+} from "./facebook/index.js";
 import { enableDebugLogging, logger } from "./logger.js";
 import { notify, notifyAlert } from "./notify.js";
 import {
   appendMatches,
+  createDebugRun,
+  localDateKey,
   markPostsReviewed,
-  readReviewedPosts,
-  reviewedPostIds,
-  writeReviewedPosts,
+  readDailyRunState,
+  readReviewedPostIds,
+  writeDailyRunSuccess,
+  writeReviewedPostIds,
 } from "./state.js";
 
 async function main() {
@@ -21,13 +29,41 @@ async function main() {
   }
 
   if (command === "scrape" || command == null) {
-    if (args.includes("--debug")) {
+    const debug = args.includes("--debug");
+    const steps = args.includes("--steps");
+    const daily = args.includes("--daily");
+    if (steps && !debug) {
+      throw new Error("--steps requires --debug so the browser remains visible.");
+    }
+    if (debug) {
       enableDebugLogging();
     }
-    await runScrape({
-      debug: args.includes("--debug"),
+    const options = {
+      debug,
+      headed: args.includes("--headed"),
+      steps,
+    };
+    if (daily && (await dailyScrapeAlreadyCompleted())) {
+      return;
+    }
+
+    await runScrape(options);
+
+    if (daily) {
+      const completed = await writeDailyRunSuccess();
+      logger.info(completed, "Recorded successful daily scrape.");
+    }
+    return;
+  }
+
+  if (command === "snapshot") {
+    enableDebugLogging();
+    const debugRun = await createDebugRun();
+    const snapshotDir = await saveFacebookPageSnapshot({
+      debugRun,
       headed: args.includes("--headed"),
     });
+    logger.info({ debugRunDir: debugRun.dir, snapshotDir }, "Saved Facebook page snapshot.");
     return;
   }
 
@@ -37,17 +73,51 @@ async function main() {
 type RunScrapeOptions = {
   headed: boolean;
   debug: boolean;
+  steps: boolean;
 };
 
+async function dailyScrapeAlreadyCompleted() {
+  const today = localDateKey();
+  const state = await readDailyRunState();
+  if (state.lastSuccessfulRunAt && localDateKey(new Date(state.lastSuccessfulRunAt)) === today) {
+    logger.info(
+      { lastSuccessfulRunAt: state.lastSuccessfulRunAt, today },
+      "Daily scrape already completed; skipping.",
+    );
+    return true;
+  }
+
+  logger.info({ today }, "No successful scrape recorded today; starting daily run.");
+  return false;
+}
+
 async function runScrape(options: RunScrapeOptions) {
+  const debugRun = options.debug ? await createDebugRun() : undefined;
   logger.info(
-    { debug: options.debug, headed: options.headed, maxPosts: config.MAX_POSTS },
+    {
+      debug: options.debug,
+      debugRunDir: debugRun?.dir,
+      headed: options.headed,
+      steps: options.steps,
+      maxPosts: config.MAX_POSTS,
+      maxAlreadyReviewedPosts: config.MAX_ALREADY_REVIEWED_POSTS,
+      maxFeedAdvances: config.SCROLL_STEPS,
+      headlessViewport:
+        options.headed || options.debug
+          ? undefined
+          : `${config.HEADLESS_VIEWPORT_WIDTH}x${config.HEADLESS_VIEWPORT_HEIGHT}`,
+    },
     "Starting scrape.",
   );
-  const reviewedPosts = await readReviewedPosts();
-  const reviewedIds = reviewedPostIds(reviewedPosts);
+  const reviewedPostIds = await readReviewedPostIds();
+  const reviewedIds = new Set(reviewedPostIds);
   logger.info({ reviewedPostCount: reviewedIds.size }, "Loaded reviewed post ids from cache.");
-  const scrapedPosts = await scrapeRecentPosts(options);
+  const scrapedPosts = await scrapeRecentPosts({
+    debugRun,
+    headed: options.headed,
+    reviewedIds,
+    steps: options.steps,
+  });
   const newPosts = scrapedPosts.filter((post) => !reviewedIds.has(post.id));
 
   logger.info(
@@ -62,7 +132,7 @@ async function runScrape(options: RunScrapeOptions) {
       { current: index + 1, total: newPosts.length, postId: post.id, url: post.url },
       "Classifying post.",
     );
-    const classification = await classifyPost(post, { debug: options.debug });
+    const classification = await classifyPost(post, { debugRun });
     newlyReviewedIds.push(post.id);
 
     logger.info(
@@ -74,12 +144,12 @@ async function runScrape(options: RunScrapeOptions) {
       "Classified post.",
     );
 
-    if (classification.relevant && classification.category !== "not_relevant") {
+    if (classification.category !== "not_relevant") {
       matches.push({ ...post, classification });
     }
   }
 
-  await writeReviewedPosts(markPostsReviewed(reviewedPosts, newlyReviewedIds));
+  await writeReviewedPostIds(markPostsReviewed(reviewedPostIds, newlyReviewedIds));
   await appendMatches(matches);
   await notify(matches);
 

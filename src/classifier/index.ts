@@ -3,12 +3,17 @@ import path from "node:path";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
-import { config, requireOpenAIKey } from "./config.js";
-import type { ScrapedPost } from "./facebook.js";
-import { logger } from "./logger.js";
+import { config, requireOpenAIKey } from "../config.js";
+import type { ScrapedPost } from "../facebook/index.js";
+import { logger } from "../logger.js";
+import type { DebugRun } from "../state.js";
+import {
+  buildClassifierPrompt,
+  type ClassifierPromptName,
+  DEFAULT_CLASSIFIER_PROMPT,
+} from "./prompt.js";
 
 export type Classification = {
-  relevant: boolean;
   confidence: number;
   category: "strong_match" | "possible_match" | "not_relevant";
   reason: string;
@@ -22,11 +27,11 @@ export type Classification = {
       | "wtb"
       | "other"
       | "unknown";
-    isFullRig: boolean | null;
     mainCanopySize: number | null;
     reserveCanopySize: number | null;
     containerSize: string | null;
     containerFit: string | null;
+    targetMainCompatibility: "compatible" | "possible" | "incompatible" | "unknown";
     sellerLocation: string | null;
     askingPrice: string | null;
   };
@@ -37,8 +42,11 @@ export type ClassifiedPost = ScrapedPost & {
   classification: Classification;
 };
 
-type ClassifyOptions = {
-  debug?: boolean;
+export type { ClassifierPromptName } from "./prompt.js";
+
+export type ClassifyOptions = {
+  debugRun?: DebugRun;
+  promptName?: ClassifierPromptName;
 };
 
 const nullableText = z.string().min(1).nullable();
@@ -46,7 +54,6 @@ const nullableCanopySize = z.number().int().min(50).max(400).nullable();
 
 const classificationSchema = z
   .object({
-    relevant: z.boolean(),
     confidence: z.number().min(0).max(1),
     category: z.enum(["strong_match", "possible_match", "not_relevant"]),
     reason: z.string().min(1),
@@ -62,11 +69,11 @@ const classificationSchema = z
           "other",
           "unknown",
         ]),
-        isFullRig: z.boolean().nullable(),
         mainCanopySize: nullableCanopySize,
         reserveCanopySize: nullableCanopySize,
         containerSize: nullableText,
         containerFit: nullableText,
+        targetMainCompatibility: z.enum(["compatible", "possible", "incompatible", "unknown"]),
         sellerLocation: nullableText,
         askingPrice: nullableText,
       })
@@ -81,6 +88,7 @@ export async function classifyPost(
 ): Promise<Classification> {
   requireOpenAIKey();
   const openai = new OpenAI({ apiKey: config.OPENAI_API_KEY });
+  const prompt = buildClassifierPrompt(options.promptName ?? DEFAULT_CLASSIFIER_PROMPT, post);
 
   const response = await openai.responses.parse({
     model: config.OPENAI_MODEL,
@@ -88,30 +96,11 @@ export async function classifyPost(
     input: [
       {
         role: "developer",
-        content: [
-          "You classify Facebook marketplace-style skydiving gear posts for a buyer.",
-          "The buyer wants a complete/full rig, not isolated accessories unless it is clearly part of a full rig.",
-          `Buyer height: ${config.BUYER_HEIGHT_FEET}'${config.BUYER_HEIGHT_INCHES}" (${config.buyerHeightInches} inches).`,
-          `Ideal main canopy: ${config.TARGET_CANOPY_SIZE}; acceptable range: ${config.MIN_CANOPY_SIZE}-${config.MAX_CANOPY_SIZE}.`,
-          "A strong match clearly offers a complete rig with a main in range and container/harness details likely suitable for a tall person.",
-          "A possible match has a complete rig and either canopy size or fit is uncertain, or it is close enough to investigate.",
-          "Mark not_relevant for WTB posts, sold posts, canopies only, containers only, aad only, helmets, suits, reserves only, rentals, spam, or clearly incompatible rigs.",
-          "Be practical: tall-fitting rigs are rare, so do not reject solely because the seller does not state height.",
-          "Return every field in the schema. Use null when the post does not state a value.",
-          "For itemType, choose the closest enum value. Use unknown only when the post text is too ambiguous to classify.",
-        ].join("\n"),
+        content: prompt.developer,
       },
       {
         role: "user",
-        content: [
-          `Post URL: ${post.url}`,
-          post.author ? `Author: ${post.author}` : undefined,
-          post.timestampText ? `Timestamp: ${post.timestampText}` : undefined,
-          "Raw post text:",
-          post.text,
-        ]
-          .filter(Boolean)
-          .join("\n"),
+        content: prompt.user,
       },
     ],
     text: {
@@ -119,8 +108,8 @@ export async function classifyPost(
     },
   });
 
-  if (options.debug) {
-    await writeDebugClassificationResponse(post, response);
+  if (options.debugRun) {
+    await writeDebugClassificationResponse(post, response, options.debugRun);
     logger.debug({ postId: post.id, response }, "OpenAI classification full response.");
   }
 
@@ -131,12 +120,17 @@ export async function classifyPost(
   return response.output_parsed;
 }
 
-async function writeDebugClassificationResponse(post: ScrapedPost, response: unknown) {
-  await fs.mkdir(config.debugClassificationsDir, { recursive: true });
+async function writeDebugClassificationResponse(
+  post: ScrapedPost,
+  response: unknown,
+  debugRun: DebugRun,
+) {
+  const classificationsDir = debugRun.classificationsDir;
+  await fs.mkdir(classificationsDir, { recursive: true });
   const savedAt = new Date().toISOString();
   const timestamp = savedAt.replaceAll(":", "-").replaceAll(".", "-");
   const safePostId = post.id.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const snapshotPath = path.join(config.debugClassificationsDir, `${timestamp}-${safePostId}.json`);
+  const snapshotPath = path.join(classificationsDir, `${timestamp}-${safePostId}.json`);
 
   await fs.writeFile(
     snapshotPath,

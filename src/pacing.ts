@@ -5,8 +5,12 @@ export function randomDelayMs(
   maxMs = config.ACTION_DELAY_MAX_MS,
   random = Math.random,
 ) {
-  const min = Math.max(0, Math.floor(minMs));
-  const max = Math.max(min, Math.floor(maxMs));
+  return randomIntegerBetween(minMs, maxMs, random);
+}
+
+export function randomIntegerBetween(minValue: number, maxValue: number, random = Math.random) {
+  const min = Math.max(0, Math.floor(minValue));
+  const max = Math.max(min, Math.floor(maxValue));
   return min + Math.floor(random() * (max - min + 1));
 }
 
