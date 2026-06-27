@@ -13,35 +13,6 @@ import {
   DEFAULT_CLASSIFIER_PROMPT,
 } from "./prompt.js";
 
-export type Classification = {
-  confidence: number;
-  category: "strong_match" | "possible_match" | "not_relevant";
-  reason: string;
-  extracted: {
-    itemType:
-      | "full_rig"
-      | "canopy_only"
-      | "container_only"
-      | "aad_only"
-      | "accessory"
-      | "wtb"
-      | "other"
-      | "unknown";
-    mainCanopySize: number | null;
-    reserveCanopySize: number | null;
-    containerSize: string | null;
-    containerFit: string | null;
-    targetMainCompatibility: "compatible" | "possible" | "incompatible" | "unknown";
-    sellerLocation: string | null;
-    askingPrice: string | null;
-  };
-  actionSummary: string;
-};
-
-export type ClassifiedPost = ScrapedPost & {
-  classification: Classification;
-};
-
 export type { ClassifierPromptName } from "./prompt.js";
 
 export type ClassifyOptions = {
@@ -81,6 +52,12 @@ const classificationSchema = z
     actionSummary: z.string().min(1),
   })
   .strict();
+
+export type Classification = z.infer<typeof classificationSchema>;
+
+export type ClassifiedPost = ScrapedPost & {
+  classification: Classification;
+};
 
 export async function classifyPost(
   post: ScrapedPost,

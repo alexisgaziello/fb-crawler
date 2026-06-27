@@ -14,8 +14,7 @@ import {
   createDebugRun,
   localDateKey,
   markPostsReviewed,
-  readDailyRunState,
-  readReviewedPostIds,
+  readCrawlerState,
   writeDailyRunSuccess,
   writeReviewedPostIds,
 } from "./state.js";
@@ -59,10 +58,7 @@ async function main() {
   if (command === "snapshot") {
     enableDebugLogging();
     const debugRun = await createDebugRun();
-    const snapshotDir = await saveFacebookPageSnapshot({
-      debugRun,
-      headed: args.includes("--headed"),
-    });
+    const snapshotDir = await saveFacebookPageSnapshot(debugRun);
     logger.info({ debugRunDir: debugRun.dir, snapshotDir }, "Saved Facebook page snapshot.");
     return;
   }
@@ -78,7 +74,7 @@ type RunScrapeOptions = {
 
 async function dailyScrapeAlreadyCompleted() {
   const today = localDateKey();
-  const state = await readDailyRunState();
+  const state = await readCrawlerState();
   if (state.lastSuccessfulRunAt && localDateKey(new Date(state.lastSuccessfulRunAt)) === today) {
     logger.info(
       { lastSuccessfulRunAt: state.lastSuccessfulRunAt, today },
@@ -109,21 +105,16 @@ async function runScrape(options: RunScrapeOptions) {
     },
     "Starting scrape.",
   );
-  const reviewedPostIds = await readReviewedPostIds();
+  const { reviewedPostIds } = await readCrawlerState();
   const reviewedIds = new Set(reviewedPostIds);
   logger.info({ reviewedPostCount: reviewedIds.size }, "Loaded reviewed post ids from cache.");
-  const scrapedPosts = await scrapeRecentPosts({
+  const newPosts = await scrapeRecentPosts({
     debugRun,
     headed: options.headed,
     reviewedIds,
     steps: options.steps,
   });
-  const newPosts = scrapedPosts.filter((post) => !reviewedIds.has(post.id));
-
-  logger.info(
-    { extractedPostCount: scrapedPosts.length, newPostCount: newPosts.length },
-    "Finished scrape extraction.",
-  );
+  logger.info({ newPostCount: newPosts.length }, "Finished scrape extraction.");
 
   const matches: ClassifiedPost[] = [];
   const newlyReviewedIds: string[] = [];

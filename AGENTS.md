@@ -27,7 +27,7 @@ Local pnpm/TypeScript ESM CLI that checks a Facebook skydiving gear group, extra
 - Manifest is `package.yaml`, not `package.json`.
 - Uses ESM: `type: module` and TypeScript `NodeNext`.
 - Runtime state is under `.data/` and should not be committed.
-- `.data/state.json` combines reviewed post IDs and daily-run success state; on first access, missing combined state is populated from the legacy `reviewed-posts.json` and `daily-run.json` files when present.
+- `.data/state.json` combines reviewed post IDs and the last successful daily-run timestamp.
 - `.env.example` is the single source of configuration defaults and setting-specific documentation; `src/config.ts` overlays `.env` and process values and should not duplicate fallback literals, while the README should only give high-level configuration guidance.
 - The classifier matches either complete rigs with an included main in the configured size range or standalone container/harness systems compatible with `TARGET_CANOPY_SIZE`; uncertain canopy or harness fit is a possible match.
 - The classifier feature is under `src/classifier/`: public API and OpenAI orchestration in `index.ts`, prompt registration/interpolation in `prompt.ts`, and named message-template pairs under `prompts/`.

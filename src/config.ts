@@ -61,8 +61,6 @@ export const config = {
   buyerHeightInches: env.BUYER_HEIGHT_FEET * 12 + env.BUYER_HEIGHT_INCHES,
   storageStatePath: path.join(dataDir, "facebook-storage-state.json"),
   statePath: path.join(dataDir, "state.json"),
-  legacyReviewedPostsPath: path.join(dataDir, "reviewed-posts.json"),
-  legacyDailyRunStatePath: path.join(dataDir, "daily-run.json"),
   debugDir: path.join(dataDir, "debug"),
   matchesPath: path.join(dataDir, "matches.jsonl"),
 };

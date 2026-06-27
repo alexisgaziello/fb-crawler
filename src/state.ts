@@ -11,22 +11,12 @@ import {
 } from "./facebook/page.js";
 import { logger } from "./logger.js";
 
-type ReviewedPostsState = {
-  reviewedIds?: string[];
-  reviewed?: Array<{ id?: string }>;
-};
-
-export type DailyRunState = {
+export type CrawlerState = {
+  reviewedPostIds: string[];
   lastSuccessfulRunAt?: string;
 };
 
-export type CrawlerState = {
-  reviewedPostIds: string[];
-  dailyRun: DailyRunState;
-};
-
 export type DebugRun = {
-  id: string;
   dir: string;
   pageDir: string;
   classificationsDir: string;
@@ -43,13 +33,10 @@ async function ensureDataDir() {
 }
 
 export async function createDebugRun(): Promise<DebugRun> {
-  await ensureDataDir();
   await fs.mkdir(config.debugDir, { recursive: true });
 
-  const id = timestampId();
-  const dir = path.join(config.debugDir, id);
+  const dir = path.join(config.debugDir, timestampId());
   const debugRun = {
-    id,
     dir,
     pageDir: path.join(dir, "page"),
     classificationsDir: path.join(dir, "classifications"),
@@ -63,17 +50,13 @@ export async function createDebugRun(): Promise<DebugRun> {
   return debugRun;
 }
 
-export async function readReviewedPostIds(): Promise<string[]> {
-  return (await readCrawlerState()).reviewedPostIds;
-}
-
 export function markPostsReviewed(reviewedIds: string[], newIds: string[]) {
   return normalizeReviewedIds([...newIds, ...reviewedIds]);
 }
 
 export async function writeReviewedPostIds(reviewedIds: string[]) {
   const state = await readCrawlerState();
-  await writeCrawlerState(withReviewedPostIds(state, reviewedIds));
+  await writeCrawlerState({ ...state, reviewedPostIds: normalizeReviewedIds(reviewedIds) });
 }
 
 export function localDateKey(date = new Date()) {
@@ -83,42 +66,22 @@ export function localDateKey(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-export async function readDailyRunState(): Promise<DailyRunState> {
-  return (await readCrawlerState()).dailyRun;
-}
-
 export async function writeDailyRunSuccess(completedAt = new Date()) {
   const state = await readCrawlerState();
-  const updated = withDailyRunSuccess(state, completedAt);
+  const updated = { ...state, lastSuccessfulRunAt: completedAt.toISOString() };
   await writeCrawlerState(updated);
-  return updated.dailyRun;
+  return { lastSuccessfulRunAt: updated.lastSuccessfulRunAt };
 }
 
-export function withReviewedPostIds(state: CrawlerState, reviewedIds: string[]): CrawlerState {
-  return { ...state, reviewedPostIds: normalizeReviewedIds(reviewedIds) };
-}
-
-export function withDailyRunSuccess(state: CrawlerState, completedAt: Date): CrawlerState {
-  return {
-    ...state,
-    dailyRun: {
-      lastSuccessfulRunAt: completedAt.toISOString(),
-    },
-  };
-}
-
-async function readCrawlerState(): Promise<CrawlerState> {
+export async function readCrawlerState(): Promise<CrawlerState> {
   await ensureDataDir();
   try {
     const parsed = JSON.parse(await fs.readFile(config.statePath, "utf8")) as Partial<CrawlerState>;
     return normalizeCrawlerState(parsed);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return { reviewedPostIds: [] };
+    throw error;
   }
-
-  const migrated = await readLegacyCrawlerState();
-  await writeCrawlerState(migrated);
-  return migrated;
 }
 
 async function writeCrawlerState(state: CrawlerState) {
@@ -129,37 +92,8 @@ async function writeCrawlerState(state: CrawlerState) {
 function normalizeCrawlerState(state: Partial<CrawlerState>): CrawlerState {
   return {
     reviewedPostIds: normalizeReviewedIds(state.reviewedPostIds ?? []),
-    dailyRun: state.dailyRun ?? {},
+    lastSuccessfulRunAt: state.lastSuccessfulRunAt,
   };
-}
-
-async function readLegacyCrawlerState(): Promise<CrawlerState> {
-  const [reviewedPostIds, dailyRun] = await Promise.all([
-    readLegacyReviewedPostIds(),
-    readLegacyDailyRunState(),
-  ]);
-  return { reviewedPostIds, dailyRun };
-}
-
-async function readLegacyReviewedPostIds() {
-  try {
-    const raw = await fs.readFile(config.legacyReviewedPostsPath, "utf8");
-    const parsed = JSON.parse(raw) as ReviewedPostsState;
-    const ids = parsed.reviewedIds ?? parsed.reviewed?.map((post) => post.id ?? "") ?? [];
-    return normalizeReviewedIds(ids);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw error;
-  }
-}
-
-async function readLegacyDailyRunState(): Promise<DailyRunState> {
-  try {
-    return JSON.parse(await fs.readFile(config.legacyDailyRunStatePath, "utf8")) as DailyRunState;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return {};
-    throw error;
-  }
 }
 
 export async function appendMatches(matches: ClassifiedPost[]) {

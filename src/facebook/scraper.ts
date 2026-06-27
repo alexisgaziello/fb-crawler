@@ -23,26 +23,17 @@ import { type ExtractionSummary, parseRawPosts, type ScrapedPost } from "./parse
 const GROUP_ID_PATTERN = /groups\/([^/?#]+)/;
 
 export class FacebookAccessError extends Error {
-  constructor(
-    message: string,
-    readonly reason: "login_required" | "captcha_or_checkpoint",
-    readonly pageUrl: string,
-  ) {
+  constructor(message: string) {
     super(message);
     this.name = "FacebookAccessError";
   }
 }
 
-export type ScrapeOptions = {
+type ScrapeOptions = {
   headed?: boolean;
   steps?: boolean;
   debugRun?: DebugRun;
   reviewedIds?: ReadonlySet<string>;
-};
-
-type SnapshotOptions = {
-  headed?: boolean;
-  debugRun: DebugRun;
 };
 
 export type DebugPostExtraction = {
@@ -50,10 +41,6 @@ export type DebugPostExtraction = {
   posts: ScrapedPost[];
   summary: ExtractionSummary;
 };
-
-function groupUrl() {
-  return config.FACEBOOK_GROUP_URL;
-}
 
 function browserViewport(headed: boolean) {
   return headed
@@ -81,7 +68,10 @@ export async function saveFacebookSession() {
 
   try {
     const page = await context.newPage();
-    await page.goto(groupUrl(), { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await page.goto(config.FACEBOOK_GROUP_URL, {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
 
     logger.info(
       existingSession
@@ -118,7 +108,10 @@ export async function scrapeRecentPosts(options: ScrapeOptions = {}): Promise<Sc
 
   try {
     logger.info({ url: config.FACEBOOK_GROUP_URL }, "Opening Facebook group.");
-    await page.goto(groupUrl(), { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await page.goto(config.FACEBOOK_GROUP_URL, {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
     logger.info({ url: page.url() }, "Facebook group loaded.");
     await pauseWithJitter();
     await assertFacebookAccessible(page);
@@ -145,21 +138,22 @@ export async function scrapeRecentPosts(options: ScrapeOptions = {}): Promise<Sc
       logger.info("Saving full debug page capture.");
       await writeDebugPageCapture(page, debugRun);
     }
-    const posts = extraction.posts;
-    logger.info({ discoveredPostCount: posts.length }, "Finished walking Facebook posts.");
+    logger.info(
+      { discoveredPostCount: extraction.posts.length },
+      "Finished walking Facebook posts.",
+    );
 
     if (debugRun) {
       await writeDebugPosts(
         {
           ...extraction,
-          posts,
           rawCandidates: extraction.rawCandidates.slice(0, config.MAX_POSTS * 2),
         },
         debugRun,
       );
     }
 
-    return posts;
+    return extraction.posts;
   } catch (error) {
     if (debugRun) {
       logger.info("Saving debug page capture after scrape failure.");
@@ -182,25 +176,27 @@ export async function scrapeRecentPosts(options: ScrapeOptions = {}): Promise<Sc
   }
 }
 
-export async function saveFacebookPageSnapshot(options: SnapshotOptions) {
+export async function saveFacebookPageSnapshot(debugRun: DebugRun) {
   if (!(await hasStorageState())) {
     throw new Error("No saved Facebook session. Run `pnpm run auth` first.");
   }
 
-  const headed = options.headed === true || options.debugRun !== undefined;
   const browser = await chromium.launch({
-    headless: headed ? false : config.HEADLESS,
+    headless: false,
     slowMo: config.SLOW_MO_MS,
   });
   const context = await browser.newContext({
     storageState: config.storageStatePath,
-    viewport: browserViewport(headed),
+    viewport: null,
   });
   const page = await context.newPage();
 
   try {
     logger.info({ url: config.FACEBOOK_GROUP_URL }, "Opening Facebook group for full capture.");
-    await page.goto(groupUrl(), { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await page.goto(config.FACEBOOK_GROUP_URL, {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
     logger.info({ url: page.url() }, "Facebook group loaded.");
     await pauseWithJitter();
     await assertFacebookAccessible(page);
@@ -211,7 +207,7 @@ export async function saveFacebookPageSnapshot(options: SnapshotOptions) {
     await scrollFeedForSnapshot(page);
     await assertFacebookAccessible(page);
     logger.info("Saving full debug page capture.");
-    return await writeDebugPageCapture(page, options.debugRun);
+    return await writeDebugPageCapture(page, debugRun);
   } finally {
     logger.info("Debug mode: browser is still open. Press Enter to close it.");
     await waitForEnter();
@@ -613,15 +609,11 @@ async function assertFacebookAccessible(page: Page) {
   if (state.hasCaptcha) {
     throw new FacebookAccessError(
       `Facebook appears to be showing a CAPTCHA, checkpoint, or security challenge at ${state.href}.`,
-      "captcha_or_checkpoint",
-      state.href,
     );
   }
   if (state.hasLogin) {
     throw new FacebookAccessError(
       `Facebook appears to require login at ${state.href}. Run pnpm run auth to refresh the session.`,
-      "login_required",
-      state.href,
     );
   }
 }

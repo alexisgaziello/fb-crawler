@@ -104,7 +104,7 @@ launchctl bootout gui/$(id -u)/com.alexisgaziello.fb-crawler
 Runtime state lives in `.data/`:
 
 - `facebook-storage-state.json`: your browser login state.
-- `state.json`: reviewed post IDs and the timestamp of the last successful `scrape:daily` run. Legacy `reviewed-posts.json` and `daily-run.json` files are imported automatically when this file is first created.
+- `state.json`: reviewed post IDs and the timestamp of the last successful `scrape:daily` run.
 - `debug/<timestamp>/`: per-run debug folder containing `page/`, `posts.json`, `extraction.json`, and `classifications/`.
 - `matches.jsonl`: append-only history of matched posts.
 
