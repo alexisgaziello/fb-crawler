@@ -7,11 +7,7 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>/opt/homebrew/bin/pnpm</string>
-    <string>--dir</string>
-    <string>/Users/alexisgaziello/local/fb-crawler</string>
-    <string>run</string>
-    <string>scrape:daily</string>
+    <string>/Users/alexisgaziello/local/fb-crawler/launchd/run</string>
   </array>
 
   <key>WorkingDirectory</key>
@@ -29,10 +25,5 @@
   <key>StartInterval</key>
   <integer>3600</integer>
 
-  <key>StandardOutPath</key>
-  <string>/Users/alexisgaziello/local/fb-crawler/.data/launchd.stdout.log</string>
-
-  <key>StandardErrorPath</key>
-  <string>/Users/alexisgaziello/local/fb-crawler/.data/launchd.stderr.log</string>
 </dict>
 </plist>

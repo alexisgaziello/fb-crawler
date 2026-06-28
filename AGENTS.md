@@ -34,6 +34,8 @@ Local pnpm/TypeScript ESM CLI that checks a Facebook skydiving gear group, extra
 - Headless runs use the explicit common landscape viewport configured by `HEADLESS_VIEWPORT_WIDTH` and `HEADLESS_VIEWPORT_HEIGHT`; headed/debug runs use `viewport: null` and follow native window resizing.
 - Facebook auth is stored in `.data/facebook-storage-state.json`.
 - The user LaunchAgent definition is `launchd/com.alexisgaziello.fb-crawler.plist`; it runs at login and hourly, while `.data/state.json` prevents more than one successful scrape per local day and permits retries after failures.
+- Install or reload the user LaunchAgent with `launchd/install`; `RunAtLoad` triggers an execution immediately after bootstrap.
+- `launchd/run` classifies combined per-execution logs under `.data/launchd/{no-op,success,error}/` by comparing crawler state before/after and checking the exit status; retention is 5/30/30 respectively.
 - Debug runs are written to `.data/debug/<timestamp>/`.
 - Each debug run contains clean final posts in `posts.json`, heavy parser diagnostics in `extraction.json`, the full `page/` capture, and `classifications/`.
 

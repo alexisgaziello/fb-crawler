@@ -1,0 +1,27 @@
+#!/bin/zsh
+
+set -eu
+
+readonly LABEL="com.alexisgaziello.fb-crawler"
+readonly SCRIPT_DIR="${0:A:h}"
+readonly SOURCE_PLIST="$SCRIPT_DIR/$LABEL.plist"
+readonly DESTINATION_DIR="$HOME/Library/LaunchAgents"
+readonly DESTINATION_PLIST="$DESTINATION_DIR/$LABEL.plist"
+readonly DOMAIN="gui/$(id -u)"
+
+if [[ ! -x "$SCRIPT_DIR/run" ]]; then
+  print -u2 -- "Expected executable launchd runner at $SCRIPT_DIR/run"
+  exit 1
+fi
+
+mkdir -p "$DESTINATION_DIR"
+
+if launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1; then
+  launchctl bootout "$DOMAIN/$LABEL"
+fi
+
+cp "$SOURCE_PLIST" "$DESTINATION_PLIST"
+launchctl bootstrap "$DOMAIN" "$DESTINATION_PLIST"
+
+print -r -- "Installed and loaded $LABEL."
+print -r -- "RunAtLoad is enabled; inspect logs under $SCRIPT_DIR/../.data/launchd/."

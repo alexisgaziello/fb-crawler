@@ -74,21 +74,23 @@ pnpm run clean:debug
 
 ## Daily Schedule
 
-The repository includes `launchd/com.alexisgaziello.fb-crawler.plist`. It starts at login and checks hourly while the user is logged in. The `scrape:daily` command records a successful run in `.data/state.json`, so only the first successful check each local calendar day performs a scrape. Failed runs remain eligible for the next hourly retry.
+The repository includes `launchd/com.alexisgaziello.fb-crawler.plist`. It starts at login and checks hourly while the user is logged in. The `scrape:daily` command records a successful run in `.data/state.json`, so only the first successful check each local calendar day performs a scrape. Failed runs remain eligible for the next hourly retry. Each launch writes a timestamped combined stdout/stderr log under `.data/launchd/`. Logs are classified by outcome: the wrapper retains 5 no-op logs, 30 successful-run logs, and 30 error logs.
 
 Install and load it:
 
 ```bash
-mkdir -p ~/Library/LaunchAgents
-cp launchd/com.alexisgaziello.fb-crawler.plist ~/Library/LaunchAgents/
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.alexisgaziello.fb-crawler.plist
+launchd/install
 ```
+
+The installer replaces an already-loaded copy when necessary. Because `RunAtLoad` is enabled, installation immediately starts one execution.
 
 Inspect status and logs:
 
 ```bash
 launchctl print gui/$(id -u)/com.alexisgaziello.fb-crawler
-tail -f .data/launchd.stdout.log .data/launchd.stderr.log
+ls -lt .data/launchd/{no-op,success,error}/
+latest_log=$(ls -t .data/launchd/*/*.log | head -1)
+tail -f "$latest_log"
 ```
 
 Unload it with:
@@ -105,6 +107,9 @@ Runtime state lives in `.data/`:
 
 - `facebook-storage-state.json`: your browser login state.
 - `state.json`: reviewed post IDs and the timestamp of the last successful `scrape:daily` run.
+- `launchd/no-op/`: timestamped logs for the newest 5 skipped LaunchAgent executions.
+- `launchd/success/`: timestamped logs for the newest 30 successful scrapes.
+- `launchd/error/`: timestamped logs for the newest 30 failed scrapes.
 - `debug/<timestamp>/`: per-run debug folder containing `page/`, `posts.json`, `extraction.json`, and `classifications/`.
 - `matches.jsonl`: append-only history of matched posts.
 

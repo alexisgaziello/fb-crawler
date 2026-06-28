@@ -1,0 +1,58 @@
+#!/bin/zsh
+
+set -u
+
+readonly PROJECT_ROOT="/Users/alexisgaziello/local/fb-crawler"
+readonly STATE_PATH="$PROJECT_ROOT/.data/state.json"
+readonly LOG_ROOT="$PROJECT_ROOT/.data/launchd"
+readonly NO_OP_LOG_RETENTION=5
+readonly SUCCESS_LOG_RETENTION=10
+readonly ERROR_LOG_RETENTION=30
+readonly PNPM_BIN="/opt/homebrew/bin/pnpm"
+
+prune_logs() {
+  local directory="$1"
+  local retention="$2"
+  local logs=("$directory"/*.log(N))
+  local excess=$(( ${#logs} - retention ))
+
+  if (( excess > 0 )); then
+    rm -f -- "${logs[@]:0:$excess}"
+  fi
+}
+
+mkdir -p "$LOG_ROOT"/{no-op,success,error} || exit 1
+timestamp=$(date -u '+%Y-%m-%dT%H-%M-%SZ')
+pending_log="$LOG_ROOT/.$timestamp.log"
+state_before=""
+if [[ -f "$STATE_PATH" ]]; then
+  state_before=$(<"$STATE_PATH")
+fi
+
+{
+  print -r -- "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] Starting daily scrape."
+  "$PNPM_BIN" --dir "$PROJECT_ROOT" run scrape:daily
+  exit_status=$?
+
+  state_after=""
+  if [[ -f "$STATE_PATH" ]]; then
+    state_after=$(<"$STATE_PATH")
+  fi
+
+  if (( exit_status != 0 )); then
+    outcome="error"
+  elif [[ "$state_before" == "$state_after" ]]; then
+    outcome="no-op"
+  else
+    outcome="success"
+  fi
+
+  print -r -- "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] Finished as $outcome with exit status $exit_status."
+} >"$pending_log" 2>&1
+
+mv "$pending_log" "$LOG_ROOT/$outcome/$timestamp.log" || exit 1
+prune_logs "$LOG_ROOT/no-op" "$NO_OP_LOG_RETENTION"
+prune_logs "$LOG_ROOT/success" "$SUCCESS_LOG_RETENTION"
+prune_logs "$LOG_ROOT/error" "$ERROR_LOG_RETENTION"
+
+exit "$exit_status"
