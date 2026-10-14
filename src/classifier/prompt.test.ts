@@ -23,6 +23,11 @@ describe("buildClassifierPrompt", () => {
     expect(developer).toContain(
       `standalone container/harness is also a strong match when it clearly accepts a ${config.TARGET_CANOPY_SIZE} main`,
     );
+    expect(developer).toContain(
+      `${config.minHarnessMaxHeightInches} in / ${config.minHarnessMaxHeightCm} cm`,
+    );
+    expect(developer).toContain(`${config.buyerHeightCm} cm`);
+    expect(developer).not.toContain("{{");
     expect(developer).not.toContain("containers only");
   });
 

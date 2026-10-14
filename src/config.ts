@@ -36,6 +36,7 @@ const envSchema = z.object({
   ANALYZED_POSTS_CACHE_LIMIT: numberFromEnv,
   BUYER_HEIGHT_FEET: numberFromEnv,
   BUYER_HEIGHT_INCHES: numberFromEnv,
+  MIN_HARNESS_HEIGHT_CM: numberFromEnv,
   TARGET_CANOPY_SIZE: numberFromEnv,
   MIN_CANOPY_SIZE: numberFromEnv,
   MAX_CANOPY_SIZE: numberFromEnv,
@@ -56,14 +57,33 @@ const exampleEnvPath = path.join(projectRoot, ".env.example");
 const defaultEnv = parse(fs.readFileSync(exampleEnvPath));
 const env = envSchema.parse({ ...defaultEnv, ...process.env });
 
+const buyerHeightInches = env.BUYER_HEIGHT_FEET * 12 + env.BUYER_HEIGHT_INCHES;
+const buyerHeightCm = inchesToCm(buyerHeightInches);
+// A harness whose stated fit range tops out below this height is rejected outright.
+const minHarnessMaxHeightCm = env.MIN_HARNESS_HEIGHT_CM;
+const minHarnessMaxHeightInches = cmToInches(minHarnessMaxHeightCm);
+
 export const config = {
   ...env,
-  buyerHeightInches: env.BUYER_HEIGHT_FEET * 12 + env.BUYER_HEIGHT_INCHES,
+  buyerHeightInches,
+  buyerHeightCm,
+  minHarnessMaxHeightCm,
+  minHarnessMaxHeightInches,
+  harnessHeightToleranceCm: buyerHeightCm - minHarnessMaxHeightCm,
+  harnessHeightToleranceInches: buyerHeightInches - minHarnessMaxHeightInches,
   storageStatePath: path.join(dataDir, "facebook-storage-state.json"),
   statePath: path.join(dataDir, "state.json"),
   debugDir: path.join(dataDir, "debug"),
   matchesPath: path.join(dataDir, "matches.jsonl"),
 };
+
+function inchesToCm(inches: number) {
+  return Math.round(inches * 2.54);
+}
+
+function cmToInches(cm: number) {
+  return Math.round(cm / 2.54);
+}
 
 export function requireOpenAIKey() {
   if (!config.OPENAI_API_KEY) {

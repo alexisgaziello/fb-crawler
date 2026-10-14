@@ -44,6 +44,7 @@ const classificationSchema = z
         reserveCanopySize: nullableCanopySize,
         containerSize: nullableText,
         containerFit: nullableText,
+        harnessFitForBuyer: z.enum(["fits", "marginal", "too_small", "too_large", "unknown"]),
         targetMainCompatibility: z.enum(["compatible", "possible", "incompatible", "unknown"]),
         sellerLocation: nullableText,
         askingPrice: nullableText,
@@ -57,6 +58,12 @@ export type Classification = z.infer<typeof classificationSchema>;
 
 export type ClassifiedPost = ScrapedPost & {
   classification: Classification;
+};
+
+export type MatchedPost = ClassifiedPost & {
+  timestamp: string;
+  checked: boolean;
+  interest: boolean;
 };
 
 export async function classifyPost(
@@ -94,7 +101,34 @@ export async function classifyPost(
     throw new Error(`OpenAI returned no parsed classification for ${post.id}`);
   }
 
-  return response.output_parsed;
+  return enforceHarnessFit(response.output_parsed, post.id);
+}
+
+// The model sometimes reasons correctly about a harness being far too short and
+// still returns a match, so harness fit is enforced here rather than trusted.
+export function enforceHarnessFit(classification: Classification, postId?: string): Classification {
+  const { harnessFitForBuyer } = classification.extracted;
+
+  if (harnessFitForBuyer === "too_small" && classification.category !== "not_relevant") {
+    logger.info(
+      { postId, category: classification.category },
+      "Downgraded match to not_relevant: harness too small for buyer.",
+    );
+    return { ...classification, category: "not_relevant" };
+  }
+
+  if (
+    (harnessFitForBuyer === "marginal" || harnessFitForBuyer === "too_large") &&
+    classification.category === "strong_match"
+  ) {
+    logger.info(
+      { postId, harnessFitForBuyer },
+      "Downgraded strong match to possible_match: harness fit is not clean.",
+    );
+    return { ...classification, category: "possible_match" };
+  }
+
+  return classification;
 }
 
 async function writeDebugClassificationResponse(

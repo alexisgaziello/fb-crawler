@@ -1,4 +1,4 @@
-import type { ClassifiedPost } from "./classifier/index.js";
+import type { MatchedPost } from "./classifier/index.js";
 import { classifyPost } from "./classifier/index.js";
 import { config } from "./config.js";
 import {
@@ -116,7 +116,7 @@ async function runScrape(options: RunScrapeOptions) {
   });
   logger.info({ newPostCount: newPosts.length }, "Finished scrape extraction.");
 
-  const matches: ClassifiedPost[] = [];
+  const matches: MatchedPost[] = [];
   const newlyReviewedIds: string[] = [];
   for (const [index, post] of newPosts.entries()) {
     logger.info(
@@ -136,7 +136,13 @@ async function runScrape(options: RunScrapeOptions) {
     );
 
     if (classification.category !== "not_relevant") {
-      matches.push({ ...post, classification });
+      matches.push({
+        ...post,
+        classification,
+        timestamp: new Date().toISOString(),
+        checked: false,
+        interest: false,
+      });
     }
   }
 

@@ -111,7 +111,7 @@ Runtime state lives in `.data/`:
 - `launchd/success/`: timestamped logs for the newest 30 successful scrapes.
 - `launchd/error/`: timestamped logs for the newest 30 failed scrapes.
 - `debug/<timestamp>/`: per-run debug folder containing `page/`, `posts.json`, `extraction.json`, and `classifications/`.
-- `matches.jsonl`: append-only history of matched posts.
+- `matches.jsonl`: history of matched posts, including an ISO `timestamp` field and `checked` and `interest` flags that default to `false` for manual tracking.
 
 ## Automation Considerations
 

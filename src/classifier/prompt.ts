@@ -25,11 +25,16 @@ type PromptValue = string | number;
 export function buildClassifierPrompt(name: ClassifierPromptName, post: PromptPost) {
   const templates = classifierPromptTemplates[name];
   const developer = renderPromptTemplate(templates.developer, {
+    BUYER_HEIGHT_CM: config.buyerHeightCm,
     BUYER_HEIGHT_FEET: config.BUYER_HEIGHT_FEET,
     BUYER_HEIGHT_INCHES: config.BUYER_HEIGHT_INCHES,
     BUYER_HEIGHT_TOTAL_INCHES: config.buyerHeightInches,
+    HARNESS_HEIGHT_TOLERANCE_CM: config.harnessHeightToleranceCm,
+    HARNESS_HEIGHT_TOLERANCE_INCHES: config.harnessHeightToleranceInches,
     MAX_CANOPY_SIZE: config.MAX_CANOPY_SIZE,
     MIN_CANOPY_SIZE: config.MIN_CANOPY_SIZE,
+    MIN_HARNESS_MAX_HEIGHT_CM: config.minHarnessMaxHeightCm,
+    MIN_HARNESS_MAX_HEIGHT_INCHES: config.minHarnessMaxHeightInches,
     TARGET_CANOPY_SIZE: config.TARGET_CANOPY_SIZE,
   });
   const user = renderPromptTemplate(templates.user, {

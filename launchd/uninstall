@@ -1,0 +1,25 @@
+#!/bin/zsh
+
+set -eu
+
+readonly LABEL="com.alexisgaziello.fb-crawler"
+readonly SCRIPT_DIR="${0:A:h}"
+readonly DESTINATION_PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+readonly DOMAIN="gui/$(id -u)"
+
+if launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1; then
+  launchctl bootout "$DOMAIN/$LABEL"
+  print -r -- "Unloaded $LABEL."
+else
+  print -r -- "$LABEL was not loaded."
+fi
+
+if [[ -f "$DESTINATION_PLIST" ]]; then
+  rm -- "$DESTINATION_PLIST"
+  print -r -- "Removed $DESTINATION_PLIST."
+else
+  print -r -- "No plist at $DESTINATION_PLIST."
+fi
+
+print -r -- "Uninstalled $LABEL."
+print -r -- "Logs under $SCRIPT_DIR/../.data/launchd/ were left in place."

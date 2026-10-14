@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { Page } from "playwright";
-import type { ClassifiedPost } from "./classifier/index.js";
+import type { MatchedPost } from "./classifier/index.js";
 import { config, dataDir } from "./config.js";
 import type { DebugPostExtraction } from "./facebook/index.js";
 import {
@@ -96,7 +96,7 @@ function normalizeCrawlerState(state: Partial<CrawlerState>): CrawlerState {
   };
 }
 
-export async function appendMatches(matches: ClassifiedPost[]) {
+export async function appendMatches(matches: MatchedPost[]) {
   if (matches.length === 0) return;
   await ensureDataDir();
   const lines = `${matches.map((match) => JSON.stringify(match)).join("\n")}\n`;

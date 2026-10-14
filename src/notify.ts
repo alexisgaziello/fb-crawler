@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import nodemailer from "nodemailer";
-import type { ClassifiedPost } from "./classifier/index.js";
+import type { MatchedPost } from "./classifier/index.js";
 import { config } from "./config.js";
 import { logger } from "./logger.js";
 
@@ -20,7 +20,7 @@ type NotificationMessage = {
   desktopMessage: string;
 };
 
-export async function notify(matches: ClassifiedPost[]) {
+export async function notify(matches: MatchedPost[]) {
   if (matches.length === 0) return;
 
   logger.info({ matchCount: matches.length }, "Relevant posts found.");
@@ -94,7 +94,7 @@ async function sendDesktopNotification(message: NotificationMessage) {
   }
 }
 
-function formatPlainText(matches: ClassifiedPost[]) {
+function formatPlainText(matches: MatchedPost[]) {
   return matches
     .map((match, index) => {
       const c = match.classification;
@@ -102,6 +102,7 @@ function formatPlainText(matches: ClassifiedPost[]) {
         `#${index + 1} ${c.category} (${Math.round(c.confidence * 100)}%)`,
         c.actionSummary,
         c.reason,
+        `Matched: ${match.timestamp}`,
         match.author ? `Author: ${match.author}` : undefined,
         match.timestampText ? `Timestamp: ${match.timestampText}` : undefined,
         `URL: ${match.url}`,
@@ -113,7 +114,7 @@ function formatPlainText(matches: ClassifiedPost[]) {
     .join("\n\n---\n\n");
 }
 
-function formatHtml(matches: ClassifiedPost[]) {
+function formatHtml(matches: MatchedPost[]) {
   const items = matches
     .map((match) => {
       const c = match.classification;
@@ -121,6 +122,7 @@ function formatHtml(matches: ClassifiedPost[]) {
         `<h2>${escapeHtml(c.category)} (${Math.round(c.confidence * 100)}%)</h2>`,
         `<p><strong>${escapeHtml(c.actionSummary)}</strong></p>`,
         `<p>${escapeHtml(c.reason)}</p>`,
+        `<p>Matched: ${escapeHtml(match.timestamp)}</p>`,
         match.author ? `<p>Author: ${escapeHtml(match.author)}</p>` : "",
         match.timestampText ? `<p>Timestamp: ${escapeHtml(match.timestampText)}</p>` : "",
         `<p><a href="${escapeHtml(match.url)}">Open Facebook post</a></p>`,
