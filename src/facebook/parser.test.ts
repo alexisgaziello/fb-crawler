@@ -24,34 +24,34 @@ describe("normalizeFacebookUrl", () => {
   it("canonicalizes Facebook commerce listing media urls", () => {
     expect(
       normalizeFacebookUrl(
-        "https://www.facebook.com/commerce/listing/1071492658546539/?media_id=0&ref=share_attachment&__tn__=%2A",
+        "https://www.facebook.com/commerce/listing/1111111111111111/?media_id=0&ref=share_attachment&__tn__=%2A",
       ),
-    ).toBe("https://www.facebook.com/commerce/listing/1071492658546539/");
+    ).toBe("https://www.facebook.com/commerce/listing/1111111111111111/");
   });
 
   it("keeps post identity params on photo urls while removing crawler noise", () => {
     expect(
       normalizeFacebookUrl(
-        "https://www.facebook.com/photo/?fbid=1539896234392233&set=pcb.1539866207728569&__cft__[0]=abc&__tn__=%2A&media_id=0",
+        "https://www.facebook.com/photo/?fbid=2222222222222222&set=pcb.3333333333333333&__cft__[0]=abc&__tn__=%2A&media_id=0",
       ),
-    ).toBe("https://www.facebook.com/photo/?fbid=1539896234392233&set=pcb.1539866207728569");
+    ).toBe("https://www.facebook.com/photo/?fbid=2222222222222222&set=pcb.3333333333333333");
   });
 });
 
 describe("derivePostId", () => {
   it("uses stable ids for marketplace listings", () => {
-    expect(derivePostId("https://www.facebook.com/commerce/listing/1071492658546539/", "rig")).toBe(
-      "1071492658546539",
+    expect(derivePostId("https://www.facebook.com/commerce/listing/1111111111111111/", "rig")).toBe(
+      "1111111111111111",
     );
   });
 
   it("uses the photo post set before the individual photo id", () => {
     expect(
       derivePostId(
-        "https://www.facebook.com/photo/?fbid=1539896234392233&set=pcb.1539866207728569",
+        "https://www.facebook.com/photo/?fbid=2222222222222222&set=pcb.3333333333333333",
         "container",
       ),
-    ).toBe("1539866207728569");
+    ).toBe("3333333333333333");
   });
 });
 

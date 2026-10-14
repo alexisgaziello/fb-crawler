@@ -1,6 +1,6 @@
 # Facebook Skydiving Gear Watcher
 
-Daily local watcher for the Buy/Sell Skydiving Gear Facebook group. It opens the group with Playwright using your saved Facebook session, extracts recent post text, asks OpenAI to classify likely full-rig or compatible container/harness matches for a 6'3" buyer targeting a 170 main canopy, and sends notifications with post links.
+Daily local watcher for a skydiving gear Facebook group. It opens the group with Playwright using your saved Facebook session, extracts recent post text, asks OpenAI to classify likely full-rig or compatible container/harness matches for a 6'3" buyer targeting a 170 main canopy, and sends notifications with post links.
 
 This tool is intended for posts you are allowed to view with your own Facebook account. It does not bypass login, paywalls, CAPTCHAs, group permissions, or platform protections.
 
@@ -12,7 +12,7 @@ pnpm exec playwright install chromium
 cp .env.example .env
 ```
 
-Edit `.env` and set at least `OPENAI_API_KEY`. Every setting and its behavior is documented inline in [`.env.example`](.env.example).
+Edit `.env` and set at least `OPENAI_API_KEY` and `FACEBOOK_GROUP_URL`. Every setting and its behavior is documented inline in [`.env.example`](.env.example).
 
 ## Save Your Facebook Session
 
@@ -74,7 +74,7 @@ pnpm run clean:debug
 
 ## Daily Schedule
 
-The repository includes `launchd/com.alexisgaziello.fb-crawler.plist`. It starts at login and checks hourly while the user is logged in. The `scrape:daily` command records a successful run in `.data/state.json`, so only the first successful check each local calendar day performs a scrape. Failed runs remain eligible for the next hourly retry. Each launch writes a timestamped combined stdout/stderr log under `.data/launchd/`. Logs are classified by outcome: the wrapper retains 5 no-op logs, 30 successful-run logs, and 30 error logs.
+The repository includes the `launchd/com.alexisgaziello.fb-crawler.plist` template; `launchd/install` fills in this checkout's location. It starts at login and checks hourly while the user is logged in. The `scrape:daily` command records a successful run in `.data/state.json`, so only the first successful check each local calendar day performs a scrape. Failed runs remain eligible for the next hourly retry. Each launch writes a timestamped combined stdout/stderr log under `.data/launchd/`. Logs are classified by outcome: the wrapper retains 5 no-op logs, 30 successful-run logs, and 30 error logs.
 
 Install and load it:
 

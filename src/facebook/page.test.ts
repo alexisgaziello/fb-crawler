@@ -66,12 +66,12 @@ describe("Facebook page functions", () => {
         page.evaluate(readPageMetricsInPage),
         page.evaluate(readFacebookAccessStateInPage),
         page.evaluate(extractRawPostsInPage, {
-          groupId: "416383335109560",
+          groupId: "1234567890",
           includeHtml: false,
           maxPosts: 5,
         }),
         page.evaluate(extractRawPostsInPage, {
-          groupId: "416383335109560",
+          groupId: "1234567890",
           includeHtml: true,
           maxPosts: 5,
         }),

@@ -152,7 +152,7 @@ export function derivePostId(url: string, text: string) {
 
 function stablePostIdFromUrl(url: string) {
   try {
-    const parsed = new URL(url, config.FACEBOOK_GROUP_URL);
+    const parsed = new URL(url, "https://www.facebook.com");
     const photoSet = parsed.searchParams.get("set")?.match(/^pcb\.(\d+)$/)?.[1];
     const photoId = parsed.pathname.includes("/photo/")
       ? parsed.searchParams.get("fbid")

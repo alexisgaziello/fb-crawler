@@ -29,12 +29,13 @@ Local pnpm/TypeScript ESM CLI that checks a Facebook skydiving gear group, extra
 - Runtime state is under `.data/` and should not be committed.
 - `.data/state.json` combines reviewed post IDs and the last successful daily-run timestamp.
 - New records in `.data/matches.jsonl` include an ISO `timestamp` field plus `checked: false` and `interest: false` flags for the user to toggle manually.
+- `FACEBOOK_GROUP_URL` intentionally has no committed default; it must be set in `.env` and is checked by `requireFacebookGroupUrl()`. Keep real group, post, and listing IDs out of tests and docs.
 - `.env.example` is the single source of configuration defaults and setting-specific documentation; `src/config.ts` overlays `.env` and process values and should not duplicate fallback literals, while the README should only give high-level configuration guidance.
 - The classifier matches either complete rigs with an included main in the configured size range or standalone container/harness systems compatible with `TARGET_CANOPY_SIZE`; uncertain canopy or harness fit is a possible match.
 - The classifier feature is under `src/classifier/`: public API and OpenAI orchestration in `index.ts`, prompt registration/interpolation in `prompt.ts`, and named message-template pairs under `prompts/`.
 - Headless runs use the explicit common landscape viewport configured by `HEADLESS_VIEWPORT_WIDTH` and `HEADLESS_VIEWPORT_HEIGHT`; headed/debug runs use `viewport: null` and follow native window resizing.
 - Facebook auth is stored in `.data/facebook-storage-state.json`.
-- The user LaunchAgent definition is `launchd/com.alexisgaziello.fb-crawler.plist`; it runs at login and hourly, while `.data/state.json` prevents more than one successful scrape per local day and permits retries after failures.
+- The user LaunchAgent definition is the `launchd/com.alexisgaziello.fb-crawler.plist` template; `launchd/install` fills in its `__PROJECT_ROOT__` paths and `launchd/run` derives the project root from its own location. Do not commit machine-specific paths. It runs at login and hourly, while `.data/state.json` prevents more than one successful scrape per local day and permits retries after failures.
 - Install or reload the user LaunchAgent with `launchd/install`; `RunAtLoad` triggers an execution immediately after bootstrap.
 - `launchd/run` classifies combined per-execution logs under `.data/launchd/{no-op,success,error}/` by comparing crawler state before/after and checking the exit status; retention is 5/30/30 respectively.
 - Debug runs are written to `.data/debug/<timestamp>/`.

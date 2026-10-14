@@ -4,6 +4,7 @@ set -eu
 
 readonly LABEL="com.alexisgaziello.fb-crawler"
 readonly SCRIPT_DIR="${0:A:h}"
+readonly PROJECT_ROOT="${SCRIPT_DIR:h}"
 readonly SOURCE_PLIST="$SCRIPT_DIR/$LABEL.plist"
 readonly DESTINATION_DIR="$HOME/Library/LaunchAgents"
 readonly DESTINATION_PLIST="$DESTINATION_DIR/$LABEL.plist"
@@ -21,6 +22,9 @@ if launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1; then
 fi
 
 cp "$SOURCE_PLIST" "$DESTINATION_PLIST"
+plutil -replace ProgramArguments -array "$DESTINATION_PLIST"
+plutil -insert ProgramArguments -string "$SCRIPT_DIR/run" -append "$DESTINATION_PLIST"
+plutil -replace WorkingDirectory -string "$PROJECT_ROOT" "$DESTINATION_PLIST"
 launchctl bootstrap "$DOMAIN" "$DESTINATION_PLIST"
 
 print -r -- "Installed and loaded $LABEL."

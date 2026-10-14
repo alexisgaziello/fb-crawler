@@ -2,7 +2,7 @@
 
 set -u
 
-readonly PROJECT_ROOT="/Users/alexisgaziello/local/fb-crawler"
+readonly PROJECT_ROOT="${0:A:h:h}"
 readonly STATE_PATH="$PROJECT_ROOT/.data/state.json"
 readonly LOG_ROOT="$PROJECT_ROOT/.data/launchd"
 readonly NO_OP_LOG_RETENTION=5

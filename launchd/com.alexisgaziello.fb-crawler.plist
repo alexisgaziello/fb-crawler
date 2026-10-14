@@ -7,11 +7,11 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/alexisgaziello/local/fb-crawler/launchd/run</string>
+    <string>__PROJECT_ROOT__/launchd/run</string>
   </array>
 
   <key>WorkingDirectory</key>
-  <string>/Users/alexisgaziello/local/fb-crawler</string>
+  <string>__PROJECT_ROOT__</string>
 
   <key>EnvironmentVariables</key>
   <dict>

@@ -1,5 +1,5 @@
 import { chromium, type ElementHandle, type Page } from "playwright";
-import { config } from "../config.js";
+import { config, requireFacebookGroupUrl } from "../config.js";
 import { logger } from "../logger.js";
 import { pauseWithJitter, randomIntegerBetween } from "../pacing.js";
 import {
@@ -57,6 +57,7 @@ function nextScrollDistance(viewportHeight: number) {
 }
 
 export async function saveFacebookSession() {
+  requireFacebookGroupUrl();
   await ensureParentDir(config.storageStatePath);
   const existingSession = await hasStorageState();
   const browser = await chromium.launch({ headless: false, slowMo: config.SLOW_MO_MS });
@@ -89,6 +90,7 @@ export async function saveFacebookSession() {
 }
 
 export async function scrapeRecentPosts(options: ScrapeOptions = {}): Promise<ScrapedPost[]> {
+  requireFacebookGroupUrl();
   if (!(await hasStorageState())) {
     throw new Error("No saved Facebook session. Run `pnpm run auth` first.");
   }
@@ -177,6 +179,7 @@ export async function scrapeRecentPosts(options: ScrapeOptions = {}): Promise<Sc
 }
 
 export async function saveFacebookPageSnapshot(debugRun: DebugRun) {
+  requireFacebookGroupUrl();
   if (!(await hasStorageState())) {
     throw new Error("No saved Facebook session. Run `pnpm run auth` first.");
   }

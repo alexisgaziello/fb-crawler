@@ -17,7 +17,7 @@ const booleanFromEnv = z
 const envSchema = z.object({
   OPENAI_API_KEY: z.string(),
   OPENAI_MODEL: z.string().min(1),
-  FACEBOOK_GROUP_URL: z.string().url(),
+  FACEBOOK_GROUP_URL: z.union([z.literal(""), z.string().url()]),
   FACEBOOK_SORT_TRIGGER_LABELS: z.string().min(1),
   FACEBOOK_NEW_POSTS_LABELS: z.string().min(1),
   LOG_LEVEL: z.string().min(1),
@@ -88,5 +88,11 @@ function cmToInches(cm: number) {
 export function requireOpenAIKey() {
   if (!config.OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY is required. Add it to .env.");
+  }
+}
+
+export function requireFacebookGroupUrl() {
+  if (!config.FACEBOOK_GROUP_URL) {
+    throw new Error("FACEBOOK_GROUP_URL is required. Add it to .env.");
   }
 }

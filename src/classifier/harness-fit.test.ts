@@ -18,7 +18,7 @@ function classification(overrides: {
       containerFit: "height 63-68 in (160-173 cm)",
       harnessFitForBuyer: overrides.harnessFitForBuyer,
       targetMainCompatibility: "compatible",
-      sellerLocation: "Wesley Chapel, FL",
+      sellerLocation: "Example City, FL",
       askingPrice: "$4600.00 USD",
     },
   };
